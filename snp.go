@@ -3,57 +3,67 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
+	"log"
 	"os"
 	"strings"
-	"terminal"
 )
 
-var snp_id string
-var negative_orientation bool
+/*
+TODO: support a list of SNPs to search for
+TODO: support data format for genesets including RR for each SNP, and corresponding histogram/summary of risks
+*/
 
-func main() {
-	flag.StringVar(&snp_id, "snp", "", "The SNP identifier to search for")
-	flag.BoolVar(&negative_orientation, "negative", false, "Set for negative orientation")
-	flag.Parse()
-
-	if snp_id == "" {
-		snp_id = os.Args[1]
-	}
-
-	// refactor for other environments/flexibility
-	file, err := os.Open(os.Getenv("HOME") + "/.dna/genome.txt")
+func findSNP(snpID, path string, negativeOrientation bool) (snp string, err error) {
+	file, err := os.Open(path)
 	check(err)
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		data := strings.Split(scanner.Text(), "\t")
-		// refactor to support lists of SNPs
 		snp := data[0]
-		if snp_id == snp {
+		if snpID == snp {
 			allele := data[3]
-			if negative_orientation {
-				allele = dna_complement(allele)
-				terminal.Stdout.Color("g").Colorf("@{!r}Showing Negative Orientation").Nl()
+			if negativeOrientation {
+				allele = dnaComplement(allele)
+				fmt.Println("Showing Negative Orientation")
 			}
-			terminal.Stdout.Color("g").Colorf("@{!b}SNP:     %s\nAlleles: %s", snp, allele).Nl()
-			os.Exit(0)
+			return fmt.Sprintf("SNP:\t%s\nAlleles:\t%s", snp, allele), nil
 		}
 	}
-	terminal.Stdout.Colorf("@{!r}SNP not found").Nl()
-	if err := scanner.Err(); err != nil {
-		panic(err)
+	return "", nil
+}
+func main() {
+	snpID := flag.String("snp", "", "SNP identifier to search for")
+	negativeOrientation := flag.Bool("negative", false, "set for negative orientation")
+	filePath := flag.String("filepath", "~/.dna/genome.txt", "the path to your 23andme data")
+	// listPath := flag.String("listpath", "", "path to a list of alleles to search for")
+
+	flag.Parse()
+
+	if *snpID == "" {
+		snpID = &os.Args[1]
 	}
+
+	result, err := findSNP(*snpID, *filePath, *negativeOrientation)
+	check(err)
+	if result != "" {
+		fmt.Println(result)
+	} else {
+		fmt.Printf("SNP %s not found\n", *snpID)
+	}
+
 }
 
 func check(e error) {
 	if e != nil {
-		panic(e)
+		log.Fatal(e)
 	}
 }
 
-func dna_complement(dna string) string {
-	var reverse_orientation string
+func dnaComplement(dna string) string {
+	var reverseOrientation string
 	complements := map[string]string{
 		"A": "T",
 		"T": "A",
@@ -61,7 +71,7 @@ func dna_complement(dna string) string {
 		"G": "C",
 	}
 	for _, char := range dna {
-		reverse_orientation += complements[string(char)]
+		reverseOrientation += complements[string(char)]
 	}
-	return reverse_orientation
+	return reverseOrientation
 }
