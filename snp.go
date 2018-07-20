@@ -138,12 +138,14 @@ func main() {
 		log.Fatal("Either a SNP or a geneset need to be set, or use interactive mode")
 	case *snpID != "" && *genesetPath != "":
 		log.Fatal("You must either select a SNP or a geneset, not both")
+	case *interactive && (*snpID != "" || (*genesetPath != "")):
+		log.Fatal("You must either use interactive mode, or one of single mode or list mode")
 	case *snpID != "":
 		allele := snps.findSNP(*snpID, *negativeOrientation)
 		if allele != "" {
 			fmt.Printf("SNP:\t%s\nAllele:\t%s\n", *snpID, allele)
 		} else {
-			fmt.Printf("SNP: %s not found", *snpID)
+			fmt.Printf("SNP: %s not found\n", *snpID)
 		}
 	case *interactive:
 		interactiveMode(&snps)
