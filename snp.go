@@ -91,20 +91,51 @@ func loadGeneset(genesetPath string) (geneset []string) {
 	return
 }
 
+// interactiveMode allows the user to search for SNPs one at a time
+func interactiveMode(snps *SNPs) {
+	fmt.Println("Interactive Mode\nType 'exit' to quit\nType 'negative' to switch to negative orientation\nType 'positive' to switch to positive orientation")
+	negativeMode := false
+	for {
+		fmt.Print("Enter a SNP id> ")
+		var snp string
+		fmt.Scanf("%s", &snp)
+		switch {
+		case snp == "exit" || snp == "quit":
+			os.Exit(0)
+		case snp == "negative":
+			fmt.Println("Switching to negative orientation")
+			negativeMode = true
+			continue
+		case snp == "positive":
+			fmt.Println("Switching to positive orientation")
+			negativeMode = false
+			continue
+		default:
+			allele := snps.findSNP(snp, negativeMode)
+			if allele != "" {
+				fmt.Printf("SNP: %s\t%s\n", snp, allele)
+			} else {
+				fmt.Printf("SNP: %s not found\n", snp)
+			}
+		}
+	}
+
+}
+
 func main() {
 	snpID := flag.String("snp", "", "SNP identifier to search for")
 	negativeOrientation := flag.Bool("negative", false, "set for negative orientation")
 	filePath := flag.String("filepath", "~/.dna/genome.txt", "the path to your 23andme data")
 	genesetPath := flag.String("geneset", "", "path to a geneset list")
-
+	interactive := flag.Bool("interactive", false, "starts interactive lookup mode")
 	flag.Parse()
 
 	snps, err := loadSNPs(*filePath)
 	check(err)
 
 	switch {
-	case *snpID == "" && *genesetPath == "":
-		log.Fatal("Either a SNP or a geneset need to be set")
+	case *snpID == "" && *genesetPath == "" && !*interactive:
+		log.Fatal("Either a SNP or a geneset need to be set, or use interactive mode")
 	case *snpID != "" && *genesetPath != "":
 		log.Fatal("You must either select a SNP or a geneset, not both")
 	case *snpID != "":
@@ -114,6 +145,8 @@ func main() {
 		} else {
 			fmt.Printf("SNP: %s not found", *snpID)
 		}
+	case *interactive:
+		interactiveMode(&snps)
 	case *genesetPath != "":
 		geneset := loadGeneset(*genesetPath)
 		alleles := snps.findSNPs(geneset, *negativeOrientation)
